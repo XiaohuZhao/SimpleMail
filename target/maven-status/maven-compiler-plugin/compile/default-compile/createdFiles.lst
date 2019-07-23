@@ -1,0 +1,4 @@
+priv\xiaohu\mail\IllegalMailFormatException.class
+priv\xiaohu\mail\MailAuthenticator.class
+priv\xiaohu\mail\SimpleMail.class
+priv\xiaohu\mail\SimpleMailSender.class
