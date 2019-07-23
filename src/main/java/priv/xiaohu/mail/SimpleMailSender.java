@@ -61,6 +61,16 @@ public class SimpleMailSender {
 	public SimpleMailSender() {
 	}
 	
+	public SimpleMailSender(final String hostname, final String username, final String password, final Collection<String> defaultRecipients) {
+		this(hostname, username, password);
+		this.recipients = defaultRecipients;
+	}
+	
+	public SimpleMailSender(final String hostname, final String username, final String password, final String... defaultRecipients) {
+		this(hostname, username, password);
+		this.recipients = Arrays.asList(defaultRecipients);
+	}
+	
 	public Collection<String> getRecipients() {
 		return this.recipients;
 	}
@@ -125,49 +135,49 @@ public class SimpleMailSender {
 	 * @param mail
 	 * 		邮件对象
 	 */
-	public void send(SimpleMail mail) throws MessagingException {
-		// 创建mime类型邮件
-		final MimeMessage message = new MimeMessage(session);
-		// 设置收件人
-		final Collection<String> recipients = mail.getRecipients();
-		final InternetAddress[] addresses;
-		// 优先使用（SimpleMail）中设置了邮件接收人
-		// 如果没有就按照（SimpleMailSender）中设置的邮件接收人
-		// 如果都没有就发送给自己
-		if (recipients == null || recipients.size() == 0) {
-			if (this.recipients == null || this.recipients.size() == 0) {
-				addresses = new InternetAddress[]{new InternetAddress(this.authenticator.getSenderMail())};
-			} else {
-				addresses = this.recipients.stream().map(this::getInternetAddress).toArray(InternetAddress[]::new);
-			}
-		} else {
-			addresses = recipients.stream().map(this::getInternetAddress).toArray(InternetAddress[]::new);
-		}
-		message.setRecipients(MimeMessage.RecipientType.TO, addresses);
-		// 设置发信人
-		message.setFrom(new InternetAddress(authenticator.getSenderMail()));
-		// 设置主题
-		message.setSubject(mail.getSubject());
-		final Multipart multipart = new MimeMultipart();
-		final BodyPart contentPart = new MimeBodyPart();
-		contentPart.setContent(mail.getContent().replace("\n", "<br/>"), "text/html;charset=UTF-8");
-		multipart.addBodyPart(contentPart);
-		final Collection<File> attachments = mail.getAttachments();
-		if (attachments != null && attachments.size() > 0) {
-			for (File attachment : attachments) {
-				final BodyPart attachmentBodyPart = new MimeBodyPart();
-				final DataSource source = new FileDataSource(attachment);
-				attachmentBodyPart.setDataHandler(new DataHandler(source));
-				try {
-					attachmentBodyPart.setFileName(encodeWord(attachment.getName()));
-				} catch (UnsupportedEncodingException e) {
-					e.printStackTrace();
-					throw new RuntimeException(e);
+	public void send(SimpleMail mail) {
+		try {
+			// 创建mime类型邮件
+			final MimeMessage message = new MimeMessage(session);
+			// 设置收件人
+			final Collection<String> recipients = mail.getRecipients();
+			final InternetAddress[] addresses;
+			// 优先使用（SimpleMail）中设置了邮件接收人
+			// 如果没有就按照（SimpleMailSender）中设置的邮件接收人
+			// 如果都没有就发送给自己
+			if (recipients == null || recipients.size() == 0) {
+				if (this.recipients == null || this.recipients.size() == 0) {
+					addresses = new InternetAddress[]{new InternetAddress(this.authenticator.getSenderMail())};
+				} else {
+					addresses = this.recipients.stream().map(this::getInternetAddress).toArray(InternetAddress[]::new);
 				}
-				multipart.addBodyPart(attachmentBodyPart);
+			} else {
+				addresses = recipients.stream().map(this::getInternetAddress).toArray(InternetAddress[]::new);
 			}
+			message.setRecipients(MimeMessage.RecipientType.TO, addresses);
+			// 设置发信人
+			message.setFrom(new InternetAddress(authenticator.getSenderMail()));
+			// 设置主题
+			message.setSubject(mail.getSubject());
+			final Multipart multipart = new MimeMultipart();
+			final BodyPart contentPart = new MimeBodyPart();
+			contentPart.setContent(mail.getContent().replace("\n", "<br/>"), "text/html;charset=UTF-8");
+			multipart.addBodyPart(contentPart);
+			final Collection<File> attachments = mail.getAttachments();
+			if (attachments != null && attachments.size() > 0) {
+				for (File attachment : attachments) {
+					final BodyPart attachmentBodyPart = new MimeBodyPart();
+					final DataSource source = new FileDataSource(attachment);
+					attachmentBodyPart.setDataHandler(new DataHandler(source));
+					attachmentBodyPart.setFileName(encodeWord(attachment.getName()));
+					multipart.addBodyPart(attachmentBodyPart);
+				}
+			}
+			message.setContent(multipart);
+			Transport.send(message);
+		} catch (MessagingException | UnsupportedEncodingException e) {
+			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
-		message.setContent(multipart);
-		Transport.send(message);
 	}
 }
